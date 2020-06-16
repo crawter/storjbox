@@ -6,6 +6,8 @@ import (
 	"os"
 	"os/exec"
 
+	"github.com/fsnotify/fsnotify"
+
 	"github.com/spf13/cobra"
 	"storj.io/common/fpath"
 )
@@ -29,6 +31,13 @@ func init() {
 		Short: "creates a new bucket from a local folder and place all files from folder to the bucket",
 		RunE:  makeBucketAndUpload,
 		Args:  cobra.ExactArgs(1),
+	})
+
+	RootCmd.AddCommand(&cobra.Command{
+		Use:   "setup",
+		Short: "setups folder watcher",
+		RunE:  watcherSetup,
+		Args:  cobra.ExactArgs(0),
 	})
 
 	RootCmd.AddCommand(&cobra.Command{
@@ -86,7 +95,7 @@ func upload(src fpath.FPath, dst fpath.FPath) (err error) {
 		Path:   uplinkExecutable,
 		Args:   []string{uplinkExecutable, "cp", src.String(), dst.String()},
 		Stdout: os.Stdout,
-		Stderr: os.Stdout,
+		Stderr: os.Stderr,
 	}
 
 	err = cmdUplinkCopy.Run()
@@ -98,7 +107,7 @@ func upload(src fpath.FPath, dst fpath.FPath) (err error) {
 		Path:   uplinkExecutable,
 		Args:   []string{uplinkExecutable, "share", dst.String() + "/" + src.Base(), "--readonly"},
 		Stdout: os.Stdout,
-		Stderr: os.Stdout,
+		Stderr: os.Stderr,
 	}
 
 	err = cmdUplinkShare.Run()
@@ -143,7 +152,7 @@ func createAndUpload(src fpath.FPath) (err error) {
 		Path:   uplinkExecutable,
 		Args:   []string{uplinkExecutable, "mb", "sj://" + info.Name()},
 		Stdout: os.Stdout,
-		Stderr: os.Stdout,
+		Stderr: os.Stderr,
 	}
 
 	err = cmdMakeBucket.Run()
@@ -157,6 +166,11 @@ func createAndUpload(src fpath.FPath) (err error) {
 	}
 
 	files, err := ioutil.ReadDir(src.String())
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+
 	for i := 0; i < len(files); i++ {
 		if files[i].IsDir() {
 			fmt.Println("folders are being ignored")
@@ -166,9 +180,9 @@ func createAndUpload(src fpath.FPath) (err error) {
 
 		cmdGoRun := &exec.Cmd{
 			Path:   goExecutable,
-			Args:   []string{goExecutable, "run", "/Users/nikolaisiedov/Workspace/storjbox/cmd/uplink/main.go", "cp", srcPath, "sj://" + info.Name()},
+			Args:   []string{goExecutable, "run", "/Users/vitalii/Work/storjbox/core/cmd/main.go", "cp", srcPath, "sj://" + info.Name()},
 			Stdout: os.Stdout,
-			Stderr: os.Stdout,
+			Stderr: os.Stderr,
 		}
 
 		err = cmdGoRun.Run()
@@ -206,6 +220,62 @@ func generateLink(_ *cobra.Command, args []string) (err error) {
 	if err != nil {
 		return err
 	}
+
+	return nil
+}
+
+func watcherSetup(_ *cobra.Command, _ []string) (err error) {
+	// creates a new file watcher
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		err = watcher.Close()
+		if err != nil {
+			fmt.Println(err.Error())
+			return
+		}
+	}()
+
+	done := make(chan bool)
+
+	go func() {
+		for {
+			select {
+			// watch for events
+			case event := <-watcher.Events:
+				fmt.Println(event.String())
+				if event.Op == 1 {
+					goExecutable, _ := exec.LookPath("go")
+
+					// TODO ignore .DS_store like files
+
+					cmdGoRun := &exec.Cmd{
+						Path:   goExecutable,
+						Args:   []string{goExecutable, "run", "/Users/vitalii/Work/storjbox/core/cmd/main.go", "cp", event.Name, "sj://bucket"},
+						Stdout: os.Stdout,
+						Stderr: os.Stderr,
+					}
+
+					err = cmdGoRun.Run()
+					if err != nil {
+						fmt.Println("ERROR", err)
+					}
+				}
+
+			case err := <-watcher.Errors:
+				fmt.Println("ERROR", err)
+			}
+		}
+	}()
+
+	// out of the box fsnotify can watch a single file, or a single directory
+	if err := watcher.Add("/Users/vitalii/stoprjbox"); err != nil {
+		return err
+	}
+
+	<-done
 
 	return nil
 }
