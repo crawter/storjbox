@@ -21,7 +21,7 @@ jobs:
       uses: actions/checkout@v2
 
     - name: Build
-      run: go install ./... .
+      run: go install ./...
       
     - name: Lint
       uses: actions-contrib/golangci-lint@master
