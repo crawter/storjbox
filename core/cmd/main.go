@@ -260,11 +260,13 @@ func watcherSetup(_ *cobra.Command, _ []string) (err error) {
 					err = cmdGoRun.Run()
 					if err != nil {
 						fmt.Println("ERROR", err)
+						return
 					}
 				}
 
 			case err := <-watcher.Errors:
 				fmt.Println("ERROR", err)
+				return
 			}
 		}
 	}()
