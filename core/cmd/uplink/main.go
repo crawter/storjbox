@@ -6,7 +6,6 @@ import (
 	"os/exec"
 
 	"github.com/spf13/cobra"
-
 	"storj.io/common/fpath"
 )
 
