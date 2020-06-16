@@ -179,6 +179,7 @@ func createAndUpload(src fpath.FPath) (err error) {
 
 		cmdGoRun := &exec.Cmd{
 			Path:   goExecutable,
+			// TODO: take path from config
 			Args:   []string{goExecutable, "run", "/Users/vitalii/Work/storjbox/core/cmd/main.go", "cp", srcPath, "sj://" + info.Name()},
 			Stdout: os.Stdout,
 			Stderr: os.Stderr,
@@ -227,6 +228,7 @@ func watcherSetup(_ *cobra.Command, _ []string) (err error) {
 	// creates a new file watcher
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
+		fmt.Println("ERROR", err)
 		return err
 	}
 	defer func() {
@@ -242,14 +244,12 @@ func watcherSetup(_ *cobra.Command, _ []string) (err error) {
 	go func() {
 		for {
 			select {
-			// watch for events
 			case event := <-watcher.Events:
 				fmt.Println(event.String())
 				if event.Op == 1 {
 					goExecutable, _ := exec.LookPath("go")
 
 					// TODO ignore .DS_store like files
-
 					cmdGoRun := &exec.Cmd{
 						Path:   goExecutable,
 						Args:   []string{goExecutable, "run", "/Users/vitalii/Work/storjbox/core/cmd/main.go", "cp", event.Name, "sj://bucket"},
@@ -271,6 +271,7 @@ func watcherSetup(_ *cobra.Command, _ []string) (err error) {
 
 	// out of the box fsnotify can watch a single file, or a single directory
 	if err := watcher.Add("/Users/vitalii/stoprjbox"); err != nil {
+		fmt.Println("ERROR", err)
 		return err
 	}
 
