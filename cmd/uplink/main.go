@@ -2,9 +2,11 @@ package main
 
 import (
 	"fmt"
-	"github.com/spf13/cobra"
 	"os"
 	"os/exec"
+
+	"github.com/spf13/cobra"
+
 	"storj.io/common/fpath"
 )
 
