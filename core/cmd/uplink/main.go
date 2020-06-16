@@ -30,6 +30,13 @@ func init() {
 		RunE:  makeBucketAndUpload,
 		Args:  cobra.ExactArgs(1),
 	})
+
+	RootCmd.AddCommand(&cobra.Command{
+		Use:   "share via Storj",
+		Short: "generates link to a file and copy it to the clipboard",
+		RunE:  generateLink,
+		Args:  cobra.ExactArgs(1),
+	})
 }
 
 func main() {
@@ -70,7 +77,10 @@ func upload(src fpath.FPath, dst fpath.FPath) (err error) {
 		return fmt.Errorf("destination must be Storj URL: %s", dst)
 	}
 
-	uplinkExecutable, _ := exec.LookPath("uplink")
+	uplinkExecutable, err := exec.LookPath("uplink")
+	if err != nil {
+		return err
+	}
 
 	cmdUplinkCopy := &exec.Cmd{
 		Path:   uplinkExecutable,
@@ -124,7 +134,10 @@ func createAndUpload(src fpath.FPath) (err error) {
 		return fmt.Errorf("you can't from %s", info)
 	}
 
-	uplinkExecutable, _ := exec.LookPath("uplink")
+	uplinkExecutable, err := exec.LookPath("uplink")
+	if err != nil {
+		return err
+	}
 
 	cmdMakeBucket := &exec.Cmd{
 		Path:   uplinkExecutable,
@@ -138,7 +151,11 @@ func createAndUpload(src fpath.FPath) (err error) {
 		return err
 	}
 
-	goExecutable, _ := exec.LookPath("go")
+	goExecutable, err := exec.LookPath("go")
+	if err != nil {
+		return err
+	}
+
 	files, err := ioutil.ReadDir(src.String())
 	for i := 0; i < len(files); i++ {
 		if files[i].IsDir() {
@@ -158,6 +175,36 @@ func createAndUpload(src fpath.FPath) (err error) {
 		if err != nil {
 			return err
 		}
+	}
+
+	return nil
+}
+
+func generateLink(_ *cobra.Command, args []string) (err error) {
+	if len(args) == 0 {
+		return fmt.Errorf("no object name to generate link")
+	}
+
+	name, err := fpath.New(args[0])
+	if err != nil {
+		return err
+	}
+
+	uplinkExecutable, err := exec.LookPath("uplink")
+	if err != nil {
+		return err
+	}
+
+	cmdUplinkShare := &exec.Cmd{
+		Path:   uplinkExecutable,
+		Args:   []string{uplinkExecutable, "share", "distConfigValue"+name.String(), "--readonly"},
+		Stdout: os.Stdout,
+		Stderr: os.Stdout,
+	}
+
+	err = cmdUplinkShare.Run()
+	if err != nil {
+		return err
 	}
 
 	return nil
