@@ -7,7 +7,6 @@ import (
 	"os/exec"
 
 	"github.com/fsnotify/fsnotify"
-
 	"github.com/spf13/cobra"
 	"storj.io/common/fpath"
 )
