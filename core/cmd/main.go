@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"net"
 	"os"
 	"os/exec"
 
@@ -178,7 +179,7 @@ func createAndUpload(src fpath.FPath) (err error) {
 		srcPath := src.String() + "/" + files[i].Name()
 
 		cmdGoRun := &exec.Cmd{
-			Path:   goExecutable,
+			Path: goExecutable,
 			// TODO: take path from config
 			Args:   []string{goExecutable, "run", "/Users/vitalii/Work/storjbox/core/cmd/main.go", "cp", srcPath, "sj://" + info.Name()},
 			Stdout: os.Stdout,
@@ -211,7 +212,7 @@ func generateLink(_ *cobra.Command, args []string) (err error) {
 
 	cmdUplinkShare := &exec.Cmd{
 		Path:   uplinkExecutable,
-		Args:   []string{uplinkExecutable, "share", "distConfigValue"+name.String(), "--readonly"},
+		Args:   []string{uplinkExecutable, "share", "distConfigValue" + name.String(), "--readonly"},
 		Stdout: os.Stdout,
 		Stderr: os.Stdout,
 	}
@@ -258,6 +259,24 @@ func watcherSetup(_ *cobra.Command, _ []string) (err error) {
 					}
 
 					err = cmdGoRun.Run()
+					if err != nil {
+						fmt.Println("ERROR", err)
+						return
+					}
+
+					conn, err := net.Dial("tcp", "192.168.1.70:13778")
+					if err != nil {
+						fmt.Println("ERROR", err)
+						return
+					}
+
+					_, err = conn.Write([]byte("successfully, uploaded file" + event.Name + "to bucket"))
+					if err != nil {
+						fmt.Println("ERROR", err)
+						return
+					}
+
+					err = conn.Close()
 					if err != nil {
 						fmt.Println("ERROR", err)
 						return
